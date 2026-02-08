@@ -1,5 +1,5 @@
 // 비밀번호 (SHA-256 해시로 저장 권장, 여기서는 간단히 처리)
-const PASSWORD_HASH = 'your-password-here'; // 이 값을 원하는 비밀번호로 변경하세요
+const PASSWORD_HASH = 'jh170715@'; // 이 값을 원하는 비밀번호로 변경하세요
 
 // 저장된 종목 목록
 let stocks = JSON.parse(localStorage.getItem('stocks') || '[]');
