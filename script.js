@@ -134,8 +134,10 @@ function initializeSearch() {
     });
 }
 
-// 검색 처리
-function handleSearch(query) {
+// API 기반 검색 (실제 종목 검색)
+const USE_REAL_API = window.location.hostname.includes('vercel.app') || window.location.hostname === 'spring7day.github.io';
+
+async function handleSearch(query) {
     const resultsContainer = document.getElementById('search-results');
     
     if (!query || query.length < 1) {
@@ -143,11 +145,33 @@ function handleSearch(query) {
         return;
     }
 
-    const results = searchStocks(query);
+    resultsContainer.innerHTML = '<div class="search-no-results">검색 중...</div>';
+    resultsContainer.classList.remove('hidden');
+
+    let results = [];
+
+    if (USE_REAL_API) {
+        // 실제 API 사용
+        try {
+            const apiBase = window.location.hostname.includes('vercel.app') 
+                ? '' 
+                : 'https://stock-signal-dashboard.vercel.app';
+            
+            const response = await fetch(`${apiBase}/api/search?query=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            results = data.results || [];
+        } catch (error) {
+            console.error('API search failed:', error);
+            // 실패 시 로컬 검색으로 폴백
+            results = searchStocks(query);
+        }
+    } else {
+        // 로컬 데이터 검색
+        results = searchStocks(query);
+    }
     
     if (results.length === 0) {
         resultsContainer.innerHTML = '<div class="search-no-results">검색 결과가 없습니다</div>';
-        resultsContainer.classList.remove('hidden');
         return;
     }
 
@@ -165,7 +189,6 @@ function handleSearch(query) {
     `).join('');
 
     resultsContainer.innerHTML = resultsHTML;
-    resultsContainer.classList.remove('hidden');
 }
 
 // 종목 선택
@@ -305,17 +328,54 @@ async function createStockCard(stock) {
 
 // 주식 데이터 가져오기
 async function fetchStockData(stock) {
-    // 실제 구현에서는 Yahoo Finance API, Alpha Vantage 등 사용
-    // 여기서는 시뮬레이션 데이터 생성
-    
+    if (USE_REAL_API) {
+        try {
+            const apiBase = window.location.hostname.includes('vercel.app') 
+                ? '' 
+                : 'https://stock-signal-dashboard.vercel.app';
+            
+            const response = await fetch(`${apiBase}/api/stock?symbol=${stock.symbol}&market=${stock.market}`);
+            const data = await response.json();
+            
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            const historicalPrices = data.historicalPrices;
+            
+            // 기술적 지표 계산
+            const indicators = {
+                rsi: calculateRSI(historicalPrices, 14),
+                macd: calculateMACD(historicalPrices),
+                ma20: calculateMA(historicalPrices, 20),
+                ma50: calculateMA(historicalPrices, 50),
+                bollinger: getBollingerPosition(historicalPrices, data.price)
+            };
+
+            return {
+                price: data.price,
+                change: data.change,
+                changePercent: data.changePercent,
+                historicalPrices,
+                indicators
+            };
+        } catch (error) {
+            console.error('Real API failed, using simulation:', error);
+            return fetchStockDataSimulation(stock);
+        }
+    } else {
+        return fetchStockDataSimulation(stock);
+    }
+}
+
+// 시뮬레이션 데이터 (폴백용)
+function fetchStockDataSimulation(stock) {
     const basePrice = Math.random() * 100000 + 10000;
     const change = (Math.random() - 0.5) * basePrice * 0.1;
     const changePercent = (change / basePrice) * 100;
     
-    // 과거 가격 데이터 시뮬레이션 (실제로는 API에서 가져옴)
     const historicalPrices = generateHistoricalPrices(basePrice, 50);
     
-    // 기술적 지표 계산
     const indicators = {
         rsi: calculateRSI(historicalPrices, 14),
         macd: calculateMACD(historicalPrices),
