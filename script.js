@@ -201,6 +201,16 @@ function updateCompactToggleLabel() {
     btn.title = document.body.classList.contains('compact') ? '자세히 보기' : '간단보기';
 }
 
+function refreshAll() {
+    const btn = document.getElementById('refresh-btn');
+    if (btn) {
+        btn.style.animation = 'spin 0.6s ease-in-out';
+        setTimeout(() => { btn.style.animation = ''; }, 600);
+    }
+    loadStocks();
+    scanRecommendedStocks();
+}
+
 // 검색 기능 초기화
 function initializeSearch() {
     const searchInput = document.getElementById('search-input');
@@ -694,10 +704,21 @@ async function scanRecommendedStocks() {
         await new Promise(resolve => setTimeout(resolve, 100));
     }
 
-    recommendedStocks = greenStocks.sort((a, b) => b.score - a.score);
+    // 중복 제거 (같은 market + symbol 조합)
+    const uniqueStocks = [];
+    const seen = new Set();
+    greenStocks.forEach(s => {
+        const key = `${s.market}:${s.symbol}`;
+        if (!seen.has(key)) {
+            seen.add(key);
+            uniqueStocks.push(s);
+        }
+    });
+    
+    recommendedStocks = uniqueStocks.sort((a, b) => b.score - a.score);
     isScanning = false;
     
-    console.log(`[추천 스캔 완료] 총: ${RECOMMENDED_POOL.length}, 성공: ${scannedCount}, 실패: ${errorCount}, 초록: ${greenStocks.length}`);
+    console.log(`[추천 스캔 완료] 총: ${RECOMMENDED_POOL.length}, 성공: ${scannedCount}, 실패: ${errorCount}, 초록: ${greenStocks.length}, 중복제거 후: ${uniqueStocks.length}`);
     updateBuyTicker();
 }
 
@@ -707,17 +728,24 @@ function updateBuyTicker() {
     const track = document.getElementById('buy-ticker-track');
     if (!ticker || !track) return;
 
-    if (recommendedStocks.length === 0) {
+    // 이미 사용자가 추가한 종목은 제외
+    const userStockKeys = new Set(stocks.map(s => `${s.market}:${s.symbol}`));
+    const filteredStocks = recommendedStocks.filter(s => !userStockKeys.has(`${s.market}:${s.symbol}`));
+
+    if (filteredStocks.length === 0) {
         if (!isScanning) {
             // 스캔 완료했는데 추천 없음
             ticker.classList.remove('hidden');
-            track.innerHTML = `<div style="padding:0.5rem;color:#888;font-size:0.85rem;">스캔 완료: ${RECOMMENDED_POOL.length}개 종목 중 매수 신호(초록) 없음 😢</div>`;
+            const totalMsg = recommendedStocks.length > 0 
+                ? `모두 이미 추가된 종목입니다 ✓` 
+                : `스캔 완료: ${RECOMMENDED_POOL.length}개 종목 중 매수 신호(초록) 없음 😢`;
+            track.innerHTML = `<div style="padding:0.5rem;color:#888;font-size:0.85rem;">${totalMsg}</div>`;
         }
         return;
     }
 
     // 2번 반복해서 자연스럽게 무한 스크롤처럼 보이게
-    const htmlOnce = recommendedStocks.map(it => {
+    const htmlOnce = filteredStocks.map(it => {
         const safeName = (it.name || '').replace(/"/g, '&quot;');
         return `
           <div class="ticker-pill" onclick="addFromTicker('${it.market}','${it.symbol}','${safeName}')" title="클릭하면 관심종목에 추가 (점수: ${it.score})">
