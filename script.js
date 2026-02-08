@@ -224,7 +224,7 @@ function initializeSearch() {
 }
 
 // API 기반 검색 (실제 종목 검색)
-const USE_REAL_API = window.location.hostname.includes('vercel.app') || window.location.hostname === 'spring7day.github.io';
+// 실제 데이터만 사용 (시뮬레이션 완전 제거됨)
 
 async function handleSearch(query) {
     const resultsContainer = document.getElementById('search-results');
@@ -239,24 +239,19 @@ async function handleSearch(query) {
 
     let results = [];
 
-    if (USE_REAL_API) {
-        // 실제 API 사용
-        try {
-            const apiBase = window.location.hostname.includes('vercel.app') 
-                ? '' 
-                : 'https://stock-signal-dashboard-chi.vercel.app';
-            
-            const response = await fetch(`${apiBase}/api/search?query=${encodeURIComponent(query)}`);
-            const data = await response.json();
-            results = data.results || [];
-        } catch (error) {
-            console.error('API search failed:', error);
-            // 실패 시 로컬 검색으로 폴백
-            results = searchStocks(query);
-        }
-    } else {
-        // 로컬 데이터 검색
-        results = searchStocks(query);
+    // 실제 API 사용
+    try {
+        const apiBase = window.location.hostname.includes('vercel.app') 
+            ? '' 
+            : 'https://stock-signal-dashboard-chi.vercel.app';
+        
+        const response = await fetch(`${apiBase}/api/search?query=${encodeURIComponent(query)}`);
+        const data = await response.json();
+        results = data.results || [];
+    } catch (error) {
+        console.error('API search failed:', error);
+        resultsContainer.innerHTML = '<div class="search-no-results">❌ 검색 API 오류</div>';
+        return;
     }
     
     if (results.length === 0) {
@@ -348,7 +343,7 @@ async function createStockCard(stock) {
             <div class="stock-card" data-market="${stock.market}" data-symbol="${stock.symbol}" data-name="${stock.name.replace(/\"/g, '&quot;')}" data-buy-color="${signals.buy.color}">
                 <div class="stock-header">
                     <div class="stock-info">
-                        <h3>${stock.name}</h3>
+                        <h3>${stock.name} <span style="font-size:0.7rem;color:#51cf66;">✓실제</span></h3>
                         <div class="symbol">${stock.market === 'KR' ? '🇰🇷' : '🇺🇸'} ${stock.symbol}</div>
                     </div>
                     <button class="delete-btn" onclick="deleteStock('${stock.market}', '${stock.symbol}')" title="삭제" aria-label="삭제">✕</button>
@@ -399,7 +394,7 @@ async function createStockCard(stock) {
             </div>
         `;
     } catch (error) {
-        console.error(`Error loading ${stock.symbol}:`, error);
+        console.error(`❌ API 오류 [${stock.symbol}]:`, error);
         return `
             <div class="stock-card">
                 <div class="stock-header">
@@ -409,7 +404,10 @@ async function createStockCard(stock) {
                     </div>
                     <button class="delete-btn" onclick="deleteStock('${stock.market}', '${stock.symbol}')" title="삭제" aria-label="삭제">✕</button>
                 </div>
-                <div class="loading" style="color: #ff6b6b;">데이터 로드 실패</div>
+                <div class="loading" style="color: #ff6b6b;padding:1rem;">
+                    ❌ 실제 데이터 로드 실패<br>
+                    <small style="font-size:0.8rem;color:#888;">API 오류 또는 종목코드 확인 필요</small>
+                </div>
             </div>
         `;
     }
@@ -417,44 +415,36 @@ async function createStockCard(stock) {
 
 // 주식 데이터 가져오기
 async function fetchStockData(stock) {
-    if (USE_REAL_API) {
-        try {
-            const apiBase = window.location.hostname.includes('vercel.app') 
-                ? '' 
-                : 'https://stock-signal-dashboard-chi.vercel.app';
-            
-            const response = await fetch(`${apiBase}/api/stock?symbol=${stock.symbol}&market=${stock.market}`);
-            const data = await response.json();
-            
-            if (data.error) {
-                throw new Error(data.error);
-            }
-
-            const historicalPrices = data.historicalPrices;
-            
-            // 기술적 지표 계산
-            const indicators = {
-                rsi: calculateRSI(historicalPrices, 14),
-                macd: calculateMACD(historicalPrices),
-                ma20: calculateMA(historicalPrices, 20),
-                ma50: calculateMA(historicalPrices, 50),
-                bollinger: getBollingerPosition(historicalPrices, data.price)
-            };
-
-            return {
-                price: data.price,
-                change: data.change,
-                changePercent: data.changePercent,
-                historicalPrices,
-                indicators
-            };
-        } catch (error) {
-            console.error('Real API failed, using simulation:', error);
-            return fetchStockDataSimulation(stock);
-        }
-    } else {
-        return fetchStockDataSimulation(stock);
+    const apiBase = window.location.hostname.includes('vercel.app') 
+        ? '' 
+        : 'https://stock-signal-dashboard-chi.vercel.app';
+    
+    const response = await fetch(`${apiBase}/api/stock?symbol=${stock.symbol}&market=${stock.market}`);
+    const data = await response.json();
+    
+    if (data.error) {
+        throw new Error(data.error);
     }
+
+    const historicalPrices = data.historicalPrices;
+    
+    // 기술적 지표 계산
+    const indicators = {
+        rsi: calculateRSI(historicalPrices, 14),
+        macd: calculateMACD(historicalPrices),
+        ma20: calculateMA(historicalPrices, 20),
+        ma50: calculateMA(historicalPrices, 50),
+        bollinger: getBollingerPosition(historicalPrices, data.price)
+    };
+
+    return {
+        price: data.price,
+        change: data.change,
+        changePercent: data.changePercent,
+        historicalPrices,
+        indicators,
+        isRealData: true
+    };
 }
 
 // 시뮬레이션 데이터 (폴백용)
@@ -612,13 +602,13 @@ function calculateSignals(data) {
     return {
         buy: {
             score: buyScore,
-            color: buyScore >= 70 ? 'green' : buyScore >= 40 ? 'yellow' : 'red',
-            emoji: buyScore >= 70 ? '🟢' : buyScore >= 40 ? '🟡' : '🔴'
+            color: buyScore >= 60 ? 'green' : buyScore >= 35 ? 'yellow' : 'red',
+            emoji: buyScore >= 60 ? '🟢' : buyScore >= 35 ? '🟡' : '🔴'
         },
         sell: {
             score: sellScore,
-            color: sellScore >= 70 ? 'green' : sellScore >= 40 ? 'yellow' : 'red',
-            emoji: sellScore >= 70 ? '🟢' : sellScore >= 40 ? '🟡' : '🔴'
+            color: sellScore >= 60 ? 'green' : sellScore >= 35 ? 'yellow' : 'red',
+            emoji: sellScore >= 60 ? '🟢' : sellScore >= 35 ? '🟡' : '🔴'
         }
     };
 }
