@@ -72,6 +72,71 @@ const PASSWORD_HASH = 'jh170715@'; // 이 값을 원하는 비밀번호로 변�
 // 저장된 종목 목록
 let stocks = JSON.parse(localStorage.getItem('stocks') || '[]');
 let isLoggedIn = sessionStorage.getItem('loggedIn') === 'true';
+let recommendedStocks = []; // 스캔해서 찾은 추천 종목 (매수 신호 초록)
+let isScanning = false;
+
+// 추천 종목 풀 (KOSPI 상위 + US 주요)
+const RECOMMENDED_POOL = [
+    // KOSPI 시총 상위
+    { market: 'KR', symbol: '005930', name: '삼성전자' },
+    { market: 'KR', symbol: '000660', name: 'SK하이닉스' },
+    { market: 'KR', symbol: '207940', name: '삼성바이오로직스' },
+    { market: 'KR', symbol: '373220', name: 'LG에너지솔루션' },
+    { market: 'KR', symbol: '005380', name: '현대차' },
+    { market: 'KR', symbol: '068270', name: '셀트리온' },
+    { market: 'KR', symbol: '000270', name: '기아' },
+    { market: 'KR', symbol: '035420', name: 'NAVER' },
+    { market: 'KR', symbol: '051910', name: 'LG화학' },
+    { market: 'KR', symbol: '006400', name: '삼성SDI' },
+    { market: 'KR', symbol: '105560', name: 'KB금융' },
+    { market: 'KR', symbol: '055550', name: '신한지주' },
+    { market: 'KR', symbol: '012330', name: '현대모비스' },
+    { market: 'KR', symbol: '005490', name: 'POSCO홀딩스' },
+    { market: 'KR', symbol: '035720', name: '카카오' },
+    { market: 'KR', symbol: '066570', name: 'LG전자' },
+    { market: 'KR', symbol: '086790', name: '하나금융지주' },
+    { market: 'KR', symbol: '259960', name: '크래프톤' },
+    { market: 'KR', symbol: '034730', name: 'SK' },
+    { market: 'KR', symbol: '012450', name: '한화에어로스페이스' },
+    { market: 'KR', symbol: '017670', name: 'SK텔레콤' },
+    { market: 'KR', symbol: '028260', name: '삼성물산' },
+    { market: 'KR', symbol: '009830', name: '한화솔루션' },
+    { market: 'KR', symbol: '032830', name: '삼성생명' },
+    { market: 'KR', symbol: '003490', name: '대한항공' },
+    { market: 'KR', symbol: '018260', name: '삼성에스디에스' },
+    
+    // 미국 주요 종목
+    { market: 'US', symbol: 'AAPL', name: 'Apple' },
+    { market: 'US', symbol: 'MSFT', name: 'Microsoft' },
+    { market: 'US', symbol: 'GOOGL', name: 'Alphabet' },
+    { market: 'US', symbol: 'AMZN', name: 'Amazon' },
+    { market: 'US', symbol: 'NVDA', name: 'NVIDIA' },
+    { market: 'US', symbol: 'META', name: 'Meta' },
+    { market: 'US', symbol: 'TSLA', name: 'Tesla' },
+    { market: 'US', symbol: 'BRK-B', name: 'Berkshire Hathaway' },
+    { market: 'US', symbol: 'V', name: 'Visa' },
+    { market: 'US', symbol: 'JNJ', name: 'Johnson & Johnson' },
+    { market: 'US', symbol: 'WMT', name: 'Walmart' },
+    { market: 'US', symbol: 'JPM', name: 'JPMorgan Chase' },
+    { market: 'US', symbol: 'MA', name: 'Mastercard' },
+    { market: 'US', symbol: 'PG', name: 'Procter & Gamble' },
+    { market: 'US', symbol: 'UNH', name: 'UnitedHealth' },
+    { market: 'US', symbol: 'HD', name: 'Home Depot' },
+    { market: 'US', symbol: 'BAC', name: 'Bank of America' },
+    { market: 'US', symbol: 'ABBV', name: 'AbbVie' },
+    { market: 'US', symbol: 'KO', name: 'Coca-Cola' },
+    { market: 'US', symbol: 'AVGO', name: 'Broadcom' },
+    { market: 'US', symbol: 'PEP', name: 'PepsiCo' },
+    { market: 'US', symbol: 'COST', name: 'Costco' },
+    { market: 'US', symbol: 'MRK', name: 'Merck' },
+    { market: 'US', symbol: 'TMO', name: 'Thermo Fisher' },
+    { market: 'US', symbol: 'DIS', name: 'Disney' },
+    { market: 'US', symbol: 'CSCO', name: 'Cisco' },
+    { market: 'US', symbol: 'ADBE', name: 'Adobe' },
+    { market: 'US', symbol: 'NFLX', name: 'Netflix' },
+    { market: 'US', symbol: 'AMD', name: 'AMD' },
+    { market: 'US', symbol: 'INTC', name: 'Intel' }
+];
 
 // 초기화
 window.onload = () => {
@@ -116,6 +181,9 @@ function showDashboard() {
     loadStocks();
     startAutoUpdate();
     initializeSearch();
+    
+    // 추천 종목 스캔 시작 (백그라운드)
+    scanRecommendedStocks();
 }
 
 function toggleCompactMode() {
@@ -263,7 +331,6 @@ async function loadStocks() {
 
     container.innerHTML = stockCards.join('');
     updateLastUpdateTime();
-    updateBuyTicker();
 }
 
 // 주식 카드 생성
@@ -586,30 +653,74 @@ function updateLastUpdateTime() {
         `마지막 업데이트: ${now.toLocaleTimeString('ko-KR')}`;
 }
 
+// 추천 종목 스캔 (매수 신호 초록인 것만)
+async function scanRecommendedStocks() {
+    if (isScanning) return;
+    isScanning = true;
+    
+    const ticker = document.getElementById('buy-ticker');
+    const track = document.getElementById('buy-ticker-track');
+    if (!ticker || !track) return;
+
+    // 스캔 중 표시
+    ticker.classList.remove('hidden');
+    track.innerHTML = '<div style="padding:0.5rem;color:#888;">추천 종목 스캔 중...</div>';
+
+    const greenStocks = [];
+    
+    // 배치로 스캔 (동시 5개씩)
+    const batchSize = 5;
+    for (let i = 0; i < RECOMMENDED_POOL.length; i += batchSize) {
+        const batch = RECOMMENDED_POOL.slice(i, i + batchSize);
+        const results = await Promise.allSettled(
+            batch.map(async (stock) => {
+                try {
+                    const data = await fetchStockData(stock);
+                    const signals = calculateSignals(data);
+                    if (signals.buy.color === 'green') {
+                        return { ...stock, score: signals.buy.score };
+                    }
+                    return null;
+                } catch (e) {
+                    return null;
+                }
+            })
+        );
+        
+        results.forEach(r => {
+            if (r.status === 'fulfilled' && r.value) {
+                greenStocks.push(r.value);
+            }
+        });
+        
+        // 50ms 대기 (API 부담 줄임)
+        await new Promise(resolve => setTimeout(resolve, 50));
+    }
+
+    recommendedStocks = greenStocks.sort((a, b) => b.score - a.score);
+    isScanning = false;
+    updateBuyTicker();
+}
+
 // 매수(초록) 신호 티커 업데이트
 function updateBuyTicker() {
     const ticker = document.getElementById('buy-ticker');
     const track = document.getElementById('buy-ticker-track');
     if (!ticker || !track) return;
 
-    const cards = Array.from(document.querySelectorAll('.stock-card[data-buy-color="green"]'));
-    if (cards.length === 0) {
-        ticker.classList.add('hidden');
-        track.innerHTML = '';
+    if (recommendedStocks.length === 0) {
+        if (!isScanning) {
+            ticker.classList.add('hidden');
+            track.innerHTML = '';
+        }
         return;
     }
 
-    const items = cards.map(card => ({
-        market: card.getAttribute('data-market'),
-        symbol: card.getAttribute('data-symbol'),
-        name: card.getAttribute('data-name')
-    }));
-
     // 2번 반복해서 자연스럽게 무한 스크롤처럼 보이게
-    const htmlOnce = items.map(it => {
+    const htmlOnce = recommendedStocks.map(it => {
         const safeName = (it.name || '').replace(/"/g, '&quot;');
         return `
-          <div class="ticker-pill" onclick="addFromTicker('${it.market}','${it.symbol}','${safeName}')" title="클릭하면 관심종목에 추가">
+          <div class="ticker-pill" onclick="addFromTicker('${it.market}','${it.symbol}','${safeName}')" title="클릭하면 관심종목에 추가 (점수: ${it.score})">
             <span class="dot"></span>
             <span class="tname">${it.name}</span>
             <span class="tsym">${it.symbol}</span>
