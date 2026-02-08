@@ -303,12 +303,11 @@ body.compact .stock-card {
     padding: 0.6rem 0.8rem;
     border: none;
     background: transparent;
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto auto;
     align-items: center;
-    gap: 0.5rem;
-    flex-wrap: nowrap;
+    column-gap: 0.6rem;
     width: 100%;
-    justify-content: space-between;
 }
 
 body.compact .price-info,
@@ -359,8 +358,7 @@ body.compact .stock-header {
 body.compact .stock-info {
     flex-direction: row;
     gap: 0;
-    order: 1;
-    flex: 0 0 auto;
+    justify-self: start;
 }
 
 body.compact .stock-info h3 {
@@ -382,8 +380,7 @@ body.compact .delete-btn {
     background: transparent;
     border: none;
     color: #888;
-    order: 999;
-    margin-left: auto;
+    justify-self: end;
 }
 
 body.compact .delete-btn:hover {
@@ -395,9 +392,9 @@ body.compact .signals {
     flex-direction: row;
     gap: 0.4rem;
     margin: 0;
-    flex: 0 0 auto;
-    justify-content: flex-start;
-    order: 2;
+    justify-content: flex-end;
+    justify-self: end;
+    white-space: nowrap;
 }
 
 /* 매수(초록) 티커 */
