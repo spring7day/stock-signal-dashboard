@@ -13,6 +13,36 @@ export default async function handler(req, res) {
   if (!query) return res.status(400).json({ error: 'Query parameter required' });
 
   try {
+    let results = [];
+
+    // 1) 한국(한글 검색) - 네이버 검색 시도 (차단 시 자동 무시)
+    // m.stock.naver.com 은 환경에 따라 403/HTML 응답이 나올 수 있음
+    try {
+      const naverUrl = `https://m.stock.naver.com/api/search/searchListJson?keyword=${encodeURIComponent(query)}`;
+      const naverRes = await fetch(naverUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; StockSignalDashboard/1.0)',
+          'Accept': 'application/json,text/plain,*/*'
+        }
+      });
+      const nText = await naverRes.text();
+      const nJson = JSON.parse(nText);
+
+      if (Array.isArray(nJson?.result)) {
+        results = results.concat(
+          nJson.result.slice(0, 10).map(item => ({
+            market: 'KR',
+            symbol: item.cd,
+            name: item.nm,
+            category: item.tp || 'KR'
+          }))
+        );
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    // 2) Yahoo Finance (영문/티커 검색 강점)
     const yahooUrl = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=12&newsCount=0`;
     const yahooRes = await fetch(yahooUrl, {
       headers: {
@@ -20,31 +50,32 @@ export default async function handler(req, res) {
       }
     });
 
-    // Yahoo가 JSON이 아닌 경우(드물지만) 대비
-    const text = await yahooRes.text();
+    const yText = await yahooRes.text();
     let yahooData;
     try {
-      yahooData = JSON.parse(text);
+      yahooData = JSON.parse(yText);
     } catch {
       throw new Error(`Yahoo returned non-JSON (status ${yahooRes.status})`);
     }
 
     const quotes = Array.isArray(yahooData?.quotes) ? yahooData.quotes : [];
 
-    let results = quotes
-      .filter(q => q && q.symbol)
-      .map(q => {
-        const sym = q.symbol;
-        const isKR = sym.endsWith('.KS') || sym.endsWith('.KQ');
-        const inferredMarket = isKR ? 'KR' : 'US';
+    results = results.concat(
+      quotes
+        .filter(q => q && q.symbol)
+        .map(q => {
+          const sym = q.symbol;
+          const isKR = sym.endsWith('.KS') || sym.endsWith('.KQ');
+          const inferredMarket = isKR ? 'KR' : 'US';
 
-        return {
-          market: inferredMarket,
-          symbol: isKR ? sym.replace(/\.(KS|KQ)$/, '') : sym,
-          name: q.longname || q.shortname || sym,
-          category: q.quoteType || (isKR ? 'KR' : 'US')
-        };
-      });
+          return {
+            market: inferredMarket,
+            symbol: isKR ? sym.replace(/\.(KS|KQ)$/, '') : sym,
+            name: q.longname || q.shortname || sym,
+            category: q.quoteType || (isKR ? 'KR' : 'US')
+          };
+        })
+    );
 
     // market 파라미터가 있으면 필터
     if (market === 'KR' || market === 'US') {
