@@ -155,7 +155,7 @@ async function handleSearch(query) {
         try {
             const apiBase = window.location.hostname.includes('vercel.app') 
                 ? '' 
-                : 'https://stock-signal-dashboard.vercel.app';
+                : 'https://stock-signal-dashboard-chi.vercel.app';
             
             const response = await fetch(`${apiBase}/api/search?query=${encodeURIComponent(query)}`);
             const data = await response.json();
@@ -332,7 +332,7 @@ async function fetchStockData(stock) {
         try {
             const apiBase = window.location.hostname.includes('vercel.app') 
                 ? '' 
-                : 'https://stock-signal-dashboard.vercel.app';
+                : 'https://stock-signal-dashboard-chi.vercel.app';
             
             const response = await fetch(`${apiBase}/api/stock?symbol=${stock.symbol}&market=${stock.market}`);
             const data = await response.json();
