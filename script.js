@@ -143,16 +143,7 @@ function handleSearch(query) {
         return;
     }
 
-    // searchStocks 함수가 없으면 기본 검색
-    if (typeof searchStocks === 'undefined') {
-        console.error('searchStocks function not found');
-        resultsContainer.innerHTML = '<div class="search-no-results">검색 기능 로딩 중...</div>';
-        resultsContainer.classList.remove('hidden');
-        return;
-    }
-
     const results = searchStocks(query);
-    console.log('Search query:', query, 'Results:', results);
     
     if (results.length === 0) {
         resultsContainer.innerHTML = '<div class="search-no-results">검색 결과가 없습니다</div>';
