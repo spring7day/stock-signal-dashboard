@@ -292,7 +292,7 @@ async function handleSearch(query) {
     }
 
     const resultsHTML = results.map(stock => `
-        <div class="search-result-item" onclick="selectStock('${stock.market}', '${stock.symbol}', '${stock.name.replace(/'/g, "\\'")}')">
+        <div class="search-result-item" onclick="selectStock('${stock.market}', '${stock.symbol}', '${stock.name.replace(/'/g, "\\'")}', '${String(stock.category || '').replace(/'/g, "\\'")}')">
             <div class="search-result-main">
                 <span class="search-result-name">${stock.name}</span>
                 <span class="search-result-symbol">${stock.symbol}</span>
@@ -308,14 +308,14 @@ async function handleSearch(query) {
 }
 
 // 종목 선택
-function selectStock(market, symbol, name) {
+function selectStock(market, symbol, name, category) {
     // 중복 체크
     if (stocks.find(s => s.symbol === symbol && s.market === market)) {
         alert('이미 등록된 종목입니다.');
         return;
     }
 
-    stocks.unshift({ market, symbol, name });
+    stocks.unshift({ market, symbol, name, category });
     saveStocks();
     loadStocks();
 
@@ -365,6 +365,8 @@ async function loadStocks() {
 async function createStockCard(stock) {
     try {
         const data = await fetchStockData(stock);
+        // 국내 종목 등 애널리스트 커버리지가 약한 경우를 대비해 시장/업황 컨텍스트 보강
+        await attachMarketContextIfNeeded(data, stock);
         const signals = calculateSignals(data);
         
         const priceChange = data.change || 0;
@@ -478,6 +480,101 @@ async function fetchStockData(stock) {
         indicators,
         forward: data.forward,
         isRealData: true
+    };
+}
+
+// -------------------------------
+// 시장/업황 컨텍스트(Forward-looking 대체)
+// - 국내 종목은 애널리스트/목표주가 데이터가 비는 경우가 많아
+//   "시장 동향 + 업종 시황(프록시 ETF/지수)"로 신호등 점수를 보강합니다.
+// -------------------------------
+
+const __contextCache = new Map();
+
+function lookupCategoryFallback(stock) {
+    // 저장된 종목에 category가 없을 수 있어, 내장 DB에서 보정
+    const found = STOCK_DATABASE?.find(s => s.market === stock.market && s.symbol === stock.symbol);
+    return stock.category || found?.category || '';
+}
+
+function getProxyByCategory(category) {
+    const c = (category || '').toLowerCase();
+
+    // 업종/테마별 "시황 프록시" (Yahoo 티커)
+    // KR 종목도 글로벌 업황 영향을 많이 받는 업종은 US ETF로 근사
+    if (c.includes('반도체') || c.includes('semiconductor')) return { symbol: 'SOXX', market: 'US', name: 'Semiconductor (SOXX)' };
+    if (c.includes('인터넷') || c.includes('it') || c.includes('테크') || c.includes('software')) return { symbol: 'QQQ', market: 'US', name: 'Nasdaq100 (QQQ)' };
+    if (c.includes('자동차')) return { symbol: 'CARZ', market: 'US', name: 'Auto (CARZ)' };
+    if (c.includes('바이오') || c.includes('헬스') || c.includes('health')) return { symbol: 'XBI', market: 'US', name: 'Biotech (XBI)' };
+    if (c.includes('2차전지') || c.includes('전지') || c.includes('battery')) return { symbol: 'LIT', market: 'US', name: 'Lithium & Battery (LIT)' };
+    if (c.includes('정유') || c.includes('에너지') || c.includes('oil')) return { symbol: 'XLE', market: 'US', name: 'Energy (XLE)' };
+    if (c.includes('은행') || c.includes('보험') || c.includes('금융') || c.includes('financial')) return { symbol: 'XLF', market: 'US', name: 'Financials (XLF)' };
+    if (c.includes('철강') || c.includes('소재') || c.includes('materials')) return { symbol: 'XLB', market: 'US', name: 'Materials (XLB)' };
+    if (c.includes('통신') || c.includes('telecom')) return { symbol: 'IYZ', market: 'US', name: 'Telecom (IYZ)' };
+    if (c.includes('가전') || c.includes('소비재') || c.includes('consumer')) return { symbol: 'XLY', market: 'US', name: 'Consumer Discretionary (XLY)' };
+    if (c.includes('게임') || c.includes('엔터') || c.includes('media')) return { symbol: 'ESPO', market: 'US', name: 'Video Games/Esports (ESPO)' };
+
+    return null;
+}
+
+function calcReturnFromPrices(prices, lookback = 20) {
+    if (!Array.isArray(prices) || prices.length < 5) return null;
+    const n = Math.min(prices.length - 1, lookback);
+    const start = prices[prices.length - 1 - n];
+    const end = prices[prices.length - 1];
+    if (!start || !end) return null;
+    return (end - start) / start;
+}
+
+async function fetchSeriesCached(symbol, market) {
+    const key = `${market}:${symbol}`;
+    if (__contextCache.has(key)) return __contextCache.get(key);
+
+    const p = (async () => {
+        const apiBase = window.location.hostname.includes('vercel.app') ? '' : 'https://stock-signal-dashboard-chi.vercel.app';
+        const r = await fetch(`${apiBase}/api/stock?symbol=${encodeURIComponent(symbol)}&market=${encodeURIComponent(market)}`);
+        const j = await r.json();
+        if (j.error) throw new Error(j.error);
+        return j.historicalPrices;
+    })();
+
+    __contextCache.set(key, p);
+    return p;
+}
+
+async function attachMarketContextIfNeeded(data, stock) {
+    // 이미 forward(애널리스트/목표주가 등)가 있으면 추가 보강 불필요
+    if (data?.forward?.available) return;
+
+    const category = lookupCategoryFallback(stock);
+
+    // 1) 시장(코스피) 모멘텀
+    // Yahoo: KOSPI Composite = ^KS11
+    let marketRet = null;
+    try {
+        const kospi = await fetchSeriesCached('^KS11', 'US');
+        marketRet = calcReturnFromPrices(kospi, 20);
+    } catch (e) {
+        marketRet = null;
+    }
+
+    // 2) 업종/테마 프록시 모멘텀
+    let sectorRet = null;
+    let proxy = getProxyByCategory(category);
+    try {
+        if (proxy) {
+            const series = await fetchSeriesCached(proxy.symbol, proxy.market);
+            sectorRet = calcReturnFromPrices(series, 20);
+        }
+    } catch (e) {
+        sectorRet = null;
+        proxy = null;
+    }
+
+    data.context = {
+        category,
+        market: { proxy: '^KS11', ret20d: marketRet },
+        sector: proxy ? { proxy: proxy.symbol, name: proxy.name, ret20d: sectorRet } : null
     };
 }
 
@@ -652,9 +749,33 @@ function calculateSignals(data) {
         // 커버리지 부족 시(한쪽만 점수 붙는 경우) 과도한 치우침 완화
         if (buyScore === 55 && sellScore === 25) { /* no-op */ }
     } else {
-        // 데이터가 없으면 중립 가중치(노란 신호 유지)
-        buyScore += 12;
-        sellScore += 12;
+        // 애널리스트 데이터가 없으면(특히 국내) 시장 동향/업종 시황 프록시로 보강
+        const ctx = data.context;
+
+        // 3-A) 시장 모멘텀 (최대 10점)
+        const m = ctx?.market?.ret20d;
+        if (typeof m === 'number') {
+            if (m >= 0.03) buyScore += 10;
+            else if (m >= 0.0) buyScore += 6;
+            else if (m <= -0.03) sellScore += 10;
+            else sellScore += 6;
+        } else {
+            buyScore += 5;
+            sellScore += 5;
+        }
+
+        // 3-B) 업종/테마 프록시 모멘텀 (최대 15점)
+        const s = ctx?.sector?.ret20d;
+        if (typeof s === 'number') {
+            if (s >= 0.05) buyScore += 15;
+            else if (s >= 0.0) buyScore += 9;
+            else if (s <= -0.05) sellScore += 15;
+            else sellScore += 9;
+        } else {
+            // 업종 프록시를 못 잡으면 중립
+            buyScore += 7;
+            sellScore += 7;
+        }
     }
 
     // 4. 볼린저밴드 분석 (20점 배점)
