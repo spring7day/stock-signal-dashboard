@@ -664,9 +664,11 @@ async function scanRecommendedStocks() {
 
     // 스캔 중 표시
     ticker.classList.remove('hidden');
-    track.innerHTML = '<div style="padding:0.5rem;color:#888;">추천 종목 스캔 중...</div>';
+    track.innerHTML = '<div style="padding:0.5rem;color:#888;font-size:0.85rem;">추천 종목 스캔 중... (최대 30초 소요)</div>';
 
     const greenStocks = [];
+    let scannedCount = 0;
+    let errorCount = 0;
     
     // 배치로 스캔 (동시 5개씩)
     const batchSize = 5;
@@ -677,11 +679,13 @@ async function scanRecommendedStocks() {
                 try {
                     const data = await fetchStockData(stock);
                     const signals = calculateSignals(data);
+                    scannedCount++;
                     if (signals.buy.color === 'green') {
                         return { ...stock, score: signals.buy.score };
                     }
                     return null;
                 } catch (e) {
+                    errorCount++;
                     return null;
                 }
             })
@@ -693,12 +697,17 @@ async function scanRecommendedStocks() {
             }
         });
         
-        // 50ms 대기 (API 부담 줄임)
-        await new Promise(resolve => setTimeout(resolve, 50));
+        // 진행상황 업데이트
+        track.innerHTML = `<div style="padding:0.5rem;color:#888;font-size:0.85rem;">스캔 중... ${scannedCount + errorCount}/${RECOMMENDED_POOL.length} (추천: ${greenStocks.length}개)</div>`;
+        
+        // 100ms 대기 (API 부담 줄임)
+        await new Promise(resolve => setTimeout(resolve, 100));
     }
 
     recommendedStocks = greenStocks.sort((a, b) => b.score - a.score);
     isScanning = false;
+    
+    console.log(`[추천 스캔 완료] 총: ${RECOMMENDED_POOL.length}, 성공: ${scannedCount}, 실패: ${errorCount}, 초록: ${greenStocks.length}`);
     updateBuyTicker();
 }
 
@@ -710,8 +719,9 @@ function updateBuyTicker() {
 
     if (recommendedStocks.length === 0) {
         if (!isScanning) {
-            ticker.classList.add('hidden');
-            track.innerHTML = '';
+            // 스캔 완료했는데 추천 없음
+            ticker.classList.remove('hidden');
+            track.innerHTML = `<div style="padding:0.5rem;color:#888;font-size:0.85rem;">스캔 완료: ${RECOMMENDED_POOL.length}개 종목 중 매수 신호(초록) 없음 😢</div>`;
         }
         return;
     }
