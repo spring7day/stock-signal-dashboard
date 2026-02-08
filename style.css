@@ -266,6 +266,47 @@ header h1 {
     gap: 1.5rem;
 }
 
+/* 간단보기 모드 */
+body.compact .stocks-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+body.compact .stock-card {
+    padding: 1rem;
+}
+
+body.compact .price-info,
+body.compact .indicators {
+    display: none;
+}
+
+body.compact .signals {
+    margin: 0.8rem 0 0;
+}
+
+body.compact .signal {
+    padding: 0.7rem;
+}
+
+body.compact .signal-light {
+    width: 46px;
+    height: 46px;
+    font-size: 1.4rem;
+}
+
+body.compact .signal-score {
+    display: none;
+}
+
+body.compact .stock-info h3 {
+    font-size: 1.05rem;
+}
+
+body.compact .stock-header {
+    margin-bottom: 0.2rem;
+}
+
 .stock-card {
     background: rgba(30, 30, 45, 0.9);
     border-radius: 15px;
@@ -301,11 +342,13 @@ header h1 {
     background: rgba(255, 107, 107, 0.2);
     border: 1px solid rgba(255, 107, 107, 0.3);
     color: #ff6b6b;
-    padding: 0.5rem 1rem;
+    padding: 0.45rem 0.9rem;
     border-radius: 8px;
     cursor: pointer;
     font-size: 0.85rem;
     transition: all 0.3s;
+    white-space: nowrap;
+    line-height: 1;
 }
 
 .delete-btn:hover {

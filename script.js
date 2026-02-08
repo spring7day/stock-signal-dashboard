@@ -107,9 +107,28 @@ function logout() {
 function showDashboard() {
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('main-dashboard').classList.remove('hidden');
+
+    // 간단보기 모드 복원
+    const compact = localStorage.getItem('compactMode') === 'true';
+    document.body.classList.toggle('compact', compact);
+    updateCompactToggleLabel();
+
     loadStocks();
     startAutoUpdate();
     initializeSearch();
+}
+
+function toggleCompactMode() {
+    const next = !document.body.classList.contains('compact');
+    document.body.classList.toggle('compact', next);
+    localStorage.setItem('compactMode', String(next));
+    updateCompactToggleLabel();
+}
+
+function updateCompactToggleLabel() {
+    const btn = document.getElementById('compact-toggle');
+    if (!btn) return;
+    btn.textContent = document.body.classList.contains('compact') ? '자세히' : '간단보기';
 }
 
 // 검색 기능 초기화
@@ -199,7 +218,7 @@ function selectStock(market, symbol, name) {
         return;
     }
 
-    stocks.push({ market, symbol, name });
+    stocks.unshift({ market, symbol, name });
     saveStocks();
     loadStocks();
 

@@ -10,7 +10,7 @@
     <!-- 로그인 화면 -->
     <div id="login-screen" class="login-container">
         <div class="login-box">
-            <h1>📊 Stock Signal Dashboard</h1>
+            <h1>주식 신호등</h1>
             <input type="password" id="password-input" placeholder="비밀번호 입력" autocomplete="off">
             <button onclick="checkPassword()">로그인</button>
             <p class="error-msg" id="error-msg"></p>
@@ -20,9 +20,10 @@
     <!-- 메인 대시보드 -->
     <div id="main-dashboard" class="hidden">
         <header>
-            <h1>📊 Stock Signal Dashboard</h1>
+            <h1>주식 신호등</h1>
             <div class="header-info">
                 <span id="last-update">마지막 업데이트: -</span>
+                <button onclick="toggleCompactMode()" class="logout-btn" id="compact-toggle">간단보기</button>
                 <button onclick="logout()" class="logout-btn">로그아웃</button>
             </div>
         </header>
