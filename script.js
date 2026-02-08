@@ -128,7 +128,9 @@ function toggleCompactMode() {
 function updateCompactToggleLabel() {
     const btn = document.getElementById('compact-toggle');
     if (!btn) return;
-    btn.textContent = document.body.classList.contains('compact') ? '자세히' : '간단보기';
+    // 아이콘 토글: 간단보기=그리드, 자세히=리스트 느낌
+    btn.textContent = document.body.classList.contains('compact') ? '▤' : '▦';
+    btn.title = document.body.classList.contains('compact') ? '자세히 보기' : '간단보기';
 }
 
 // 검색 기능 초기화
@@ -261,6 +263,7 @@ async function loadStocks() {
 
     container.innerHTML = stockCards.join('');
     updateLastUpdateTime();
+    updateBuyTicker();
 }
 
 // 주식 카드 생성
@@ -275,13 +278,13 @@ async function createStockCard(stock) {
         const changeSymbol = priceChange >= 0 ? '▲' : '▼';
 
         return `
-            <div class="stock-card">
+            <div class="stock-card" data-market="${stock.market}" data-symbol="${stock.symbol}" data-name="${stock.name.replace(/\"/g, '&quot;')}" data-buy-color="${signals.buy.color}">
                 <div class="stock-header">
                     <div class="stock-info">
                         <h3>${stock.name}</h3>
                         <div class="symbol">${stock.market === 'KR' ? '🇰🇷' : '🇺🇸'} ${stock.symbol}</div>
                     </div>
-                    <button class="delete-btn" onclick="deleteStock('${stock.market}', '${stock.symbol}')">삭제</button>
+                    <button class="delete-btn" onclick="deleteStock('${stock.market}', '${stock.symbol}')" title="삭제" aria-label="삭제">✕</button>
                 </div>
 
                 <div class="price-info">
@@ -337,7 +340,7 @@ async function createStockCard(stock) {
                         <h3>${stock.name}</h3>
                         <div class="symbol">${stock.market === 'KR' ? '🇰🇷' : '🇺🇸'} ${stock.symbol}</div>
                     </div>
-                    <button class="delete-btn" onclick="deleteStock('${stock.market}', '${stock.symbol}')">삭제</button>
+                    <button class="delete-btn" onclick="deleteStock('${stock.market}', '${stock.symbol}')" title="삭제" aria-label="삭제">✕</button>
                 </div>
                 <div class="loading" style="color: #ff6b6b;">데이터 로드 실패</div>
             </div>
@@ -581,6 +584,56 @@ function updateLastUpdateTime() {
     const now = new Date();
     document.getElementById('last-update').textContent = 
         `마지막 업데이트: ${now.toLocaleTimeString('ko-KR')}`;
+}
+
+// 매수(초록) 신호 티커 업데이트
+function updateBuyTicker() {
+    const ticker = document.getElementById('buy-ticker');
+    const track = document.getElementById('buy-ticker-track');
+    if (!ticker || !track) return;
+
+    const cards = Array.from(document.querySelectorAll('.stock-card[data-buy-color="green"]'));
+    if (cards.length === 0) {
+        ticker.classList.add('hidden');
+        track.innerHTML = '';
+        return;
+    }
+
+    const items = cards.map(card => ({
+        market: card.getAttribute('data-market'),
+        symbol: card.getAttribute('data-symbol'),
+        name: card.getAttribute('data-name')
+    }));
+
+    // 2번 반복해서 자연스럽게 무한 스크롤처럼 보이게
+    const htmlOnce = items.map(it => {
+        const safeName = (it.name || '').replace(/"/g, '&quot;');
+        return `
+          <div class="ticker-pill" onclick="addFromTicker('${it.market}','${it.symbol}','${safeName}')" title="클릭하면 관심종목에 추가">
+            <span class="dot"></span>
+            <span class="tname">${it.name}</span>
+            <span class="tsym">${it.symbol}</span>
+          </div>
+        `;
+    }).join('');
+
+    track.innerHTML = htmlOnce + htmlOnce;
+    ticker.classList.remove('hidden');
+}
+
+function addFromTicker(market, symbol, name) {
+    // 이미 있으면 맨 위로 올리기
+    const idx = stocks.findIndex(s => s.market === market && s.symbol === symbol);
+    if (idx >= 0) {
+        const [item] = stocks.splice(idx, 1);
+        stocks.unshift(item);
+        saveStocks();
+        loadStocks();
+        return;
+    }
+    stocks.unshift({ market, symbol, name });
+    saveStocks();
+    loadStocks();
 }
 
 // 자동 업데이트 (5분마다)
