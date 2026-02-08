@@ -211,6 +211,119 @@ function refreshAll() {
     scanRecommendedStocks();
 }
 
+// 카드 클릭(간단보기: 개별 확장/축소) + 길게누르기(정렬)
+function setupCardInteractions() {
+    const container = document.getElementById('stocks-container');
+    if (!container) return;
+
+    // 중복 바인딩 방지
+    if (container.__boundInteractions) return;
+    container.__boundInteractions = true;
+
+    // 1) 간단보기에서 카드 클릭 시 상세 토글
+    container.addEventListener('click', (e) => {
+        if (!document.body.classList.contains('compact')) return;
+        const deleteBtn = e.target.closest('.delete-btn');
+        if (deleteBtn) return;
+
+        const card = e.target.closest('.stock-card');
+        if (!card) return;
+        card.classList.toggle('expanded');
+    });
+
+    // 2) 길게 누르면 드래그 정렬 모드 (터치/마우스 공용)
+    let pressTimer = null;
+    let draggingEl = null;
+    let startY = 0;
+    let offsetY = 0;
+
+    const clearPress = () => {
+        if (pressTimer) clearTimeout(pressTimer);
+        pressTimer = null;
+    };
+
+    const onPointerDown = (e) => {
+        const card = e.target.closest('.stock-card');
+        if (!card) return;
+        if (e.target.closest('.delete-btn')) return;
+
+        clearPress();
+        pressTimer = setTimeout(() => {
+            // reorder start
+            document.body.classList.add('reordering');
+            draggingEl = card;
+            draggingEl.classList.add('dragging');
+            startY = e.clientY || (e.touches && e.touches[0]?.clientY) || 0;
+            const rect = draggingEl.getBoundingClientRect();
+            offsetY = startY - rect.top;
+            draggingEl.style.position = 'relative';
+            draggingEl.style.zIndex = '50';
+        }, 450);
+    };
+
+    const onPointerMove = (e) => {
+        if (!draggingEl) return;
+        const y = e.clientY || (e.touches && e.touches[0]?.clientY) || 0;
+        const currentY = y - startY;
+        draggingEl.style.transform = `translateY(${currentY}px)`;
+
+        const cards = Array.from(container.querySelectorAll('.stock-card:not(.dragging)'));
+        const draggingRect = draggingEl.getBoundingClientRect();
+        const midY = draggingRect.top + draggingRect.height / 2;
+
+        let target = null;
+        for (const c of cards) {
+            const r = c.getBoundingClientRect();
+            if (midY < r.top + r.height / 2) {
+                target = c;
+                break;
+            }
+        }
+        if (target) {
+            container.insertBefore(draggingEl, target);
+        } else {
+            container.appendChild(draggingEl);
+        }
+
+        e.preventDefault();
+    };
+
+    const finishDrag = () => {
+        clearPress();
+        if (!draggingEl) return;
+
+        draggingEl.classList.remove('dragging');
+        draggingEl.style.transform = '';
+        draggingEl.style.position = '';
+        draggingEl.style.zIndex = '';
+
+        draggingEl = null;
+        document.body.classList.remove('reordering');
+
+        // DOM 순서 → stocks 배열 순서로 저장
+        const ordered = Array.from(container.querySelectorAll('.stock-card'))
+            .map(el => ({ market: el.getAttribute('data-market'), symbol: el.getAttribute('data-symbol') }));
+
+        const newStocks = [];
+        for (const o of ordered) {
+            const found = stocks.find(s => s.market === o.market && s.symbol === o.symbol);
+            if (found) newStocks.push(found);
+        }
+        // 혹시 누락된게 있으면 뒤에 붙이기
+        for (const s of stocks) {
+            if (!newStocks.find(x => x.market === s.market && x.symbol === s.symbol)) newStocks.push(s);
+        }
+        stocks = newStocks;
+        saveStocks();
+    };
+
+    container.addEventListener('pointerdown', onPointerDown);
+    container.addEventListener('pointermove', onPointerMove, { passive: false });
+    container.addEventListener('pointerup', finishDrag);
+    container.addEventListener('pointercancel', finishDrag);
+    container.addEventListener('pointerleave', finishDrag);
+}
+
 // 검색 기능 초기화
 function initializeSearch() {
     const searchInput = document.getElementById('search-input');
@@ -336,6 +449,7 @@ async function loadStocks() {
 
     container.innerHTML = stockCards.join('');
     updateLastUpdateTime();
+    setupCardInteractions();
 }
 
 // 주식 카드 생성

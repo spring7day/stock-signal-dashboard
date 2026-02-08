@@ -320,6 +320,31 @@ body.compact .indicators {
     display: none;
 }
 
+body.compact .stock-card.expanded .price-info,
+body.compact .stock-card.expanded .indicators {
+    display: block;
+}
+
+body.compact .stock-card.expanded {
+    display: block;
+    padding: 1rem;
+    background: rgba(30, 30, 45, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+body.compact .stock-card.expanded .symbol,
+body.compact .stock-card.expanded .stock-info h3 span {
+    display: inline !important;
+}
+
+body.reordering .stock-card {
+    cursor: grabbing;
+}
+
+.stock-card.dragging {
+    opacity: 0.85;
+}
+
 body.compact .signals {
     margin: 0.8rem 0 0;
 }
