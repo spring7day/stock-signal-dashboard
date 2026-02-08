@@ -31,6 +31,23 @@ document.getElementById('password-input')?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') checkPassword();
 });
 
+// 검색 기능
+let searchTimeout;
+document.getElementById('search-input')?.addEventListener('input', (e) => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        handleSearch(e.target.value);
+    }, 300);
+});
+
+// 검색 결과 외부 클릭 시 닫기
+document.addEventListener('click', (e) => {
+    const searchContainer = document.querySelector('.search-container');
+    if (searchContainer && !searchContainer.contains(e.target)) {
+        document.getElementById('search-results').classList.add('hidden');
+    }
+});
+
 function logout() {
     sessionStorage.removeItem('loggedIn');
     location.reload();
@@ -43,17 +60,42 @@ function showDashboard() {
     startAutoUpdate();
 }
 
-// 종목 추가
-function addStock() {
-    const market = document.getElementById('market-select').value;
-    const symbol = document.getElementById('symbol-input').value.trim().toUpperCase();
-    const name = document.getElementById('name-input').value.trim();
-
-    if (!symbol || !name) {
-        alert('종목코드와 종목명을 모두 입력해주세요.');
+// 검색 처리
+function handleSearch(query) {
+    const resultsContainer = document.getElementById('search-results');
+    
+    if (!query || query.length < 1) {
+        resultsContainer.classList.add('hidden');
         return;
     }
 
+    const results = searchStocks(query);
+    
+    if (results.length === 0) {
+        resultsContainer.innerHTML = '<div class="search-no-results">검색 결과가 없습니다</div>';
+        resultsContainer.classList.remove('hidden');
+        return;
+    }
+
+    const resultsHTML = results.map(stock => `
+        <div class="search-result-item" onclick="selectStock('${stock.market}', '${stock.symbol}', '${stock.name.replace(/'/g, "\\'")}')">
+            <div class="search-result-main">
+                <span class="search-result-name">${stock.name}</span>
+                <span class="search-result-symbol">${stock.symbol}</span>
+            </div>
+            <div class="search-result-info">
+                <span class="search-result-market">${stock.market === 'KR' ? '🇰🇷 한국' : '🇺🇸 미국'}</span>
+                <span class="search-result-category">${stock.category}</span>
+            </div>
+        </div>
+    `).join('');
+
+    resultsContainer.innerHTML = resultsHTML;
+    resultsContainer.classList.remove('hidden');
+}
+
+// 종목 선택
+function selectStock(market, symbol, name) {
     // 중복 체크
     if (stocks.find(s => s.symbol === symbol && s.market === market)) {
         alert('이미 등록된 종목입니다.');
@@ -65,8 +107,13 @@ function addStock() {
     loadStocks();
 
     // 입력 필드 초기화
-    document.getElementById('symbol-input').value = '';
-    document.getElementById('name-input').value = '';
+    document.getElementById('search-input').value = '';
+    document.getElementById('search-results').classList.add('hidden');
+}
+
+// 종목 추가 (기존 함수, 하위 호환용)
+function addStock() {
+    // 검색 방식으로 변경되어 사용 안 함
 }
 
 function deleteStock(market, symbol) {

@@ -32,15 +32,12 @@
             <div class="add-stock-section">
                 <h2>종목 추가</h2>
                 <div class="add-stock-form">
-                    <select id="market-select">
-                        <option value="KR">🇰🇷 한국</option>
-                        <option value="US">🇺🇸 미국</option>
-                    </select>
-                    <input type="text" id="symbol-input" placeholder="종목코드 (예: 005930, AAPL)">
-                    <input type="text" id="name-input" placeholder="종목명 (예: 삼성전자, Apple)">
-                    <button onclick="addStock()">추가</button>
+                    <div class="search-container">
+                        <input type="text" id="search-input" placeholder="🔍 종목명 또는 종목코드 검색 (예: 삼성전자, Apple, TSLA)" autocomplete="off">
+                        <div id="search-results" class="search-results hidden"></div>
+                    </div>
                 </div>
-                <p class="hint">💡 한국: 005930(삼성전자), 035720(카카오) / 미국: AAPL, TSLA, SPY(ETF)</p>
+                <p class="hint">💡 종목명을 입력하면 자동으로 검색됩니다. 선택하시면 바로 추가됩니다.</p>
             </div>
 
             <!-- 신호등 대시보드 -->
@@ -50,6 +47,7 @@
         </div>
     </div>
 
+    <script src="stock-data.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

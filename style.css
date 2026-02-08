@@ -152,44 +152,105 @@ header h1 {
     flex-wrap: wrap;
 }
 
-.add-stock-form select,
+.search-container {
+    flex: 1;
+    position: relative;
+    min-width: 300px;
+}
+
 .add-stock-form input {
+    width: 100%;
     padding: 0.8rem;
     background: rgba(255, 255, 255, 0.05);
     border: 2px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     color: #e0e0e0;
     font-size: 1rem;
+    transition: all 0.3s;
 }
 
-.add-stock-form select {
-    flex: 0 0 120px;
-}
-
-.add-stock-form input {
-    flex: 1;
-    min-width: 150px;
-}
-
-.add-stock-form input:focus,
-.add-stock-form select:focus {
+.add-stock-form input:focus {
     outline: none;
     border-color: #667eea;
+    background: rgba(255, 255, 255, 0.1);
 }
 
-.add-stock-form button {
-    padding: 0.8rem 2rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
-    border-radius: 8px;
-    color: white;
-    font-weight: 600;
+/* 검색 결과 */
+.search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 0.5rem;
+    background: rgba(30, 30, 45, 0.98);
+    border: 2px solid rgba(102, 126, 234, 0.3);
+    border-radius: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.search-results.hidden {
+    display: none;
+}
+
+.search-result-item {
+    padding: 1rem;
     cursor: pointer;
-    transition: transform 0.2s;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.2s;
 }
 
-.add-stock-form button:hover {
-    transform: translateY(-2px);
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-item:hover {
+    background: rgba(102, 126, 234, 0.2);
+}
+
+.search-result-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.3rem;
+}
+
+.search-result-name {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #e0e0e0;
+}
+
+.search-result-symbol {
+    font-family: 'Courier New', monospace;
+    color: #667eea;
+    font-size: 0.9rem;
+}
+
+.search-result-info {
+    display: flex;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: #a0a0a0;
+}
+
+.search-result-market {
+    background: rgba(102, 126, 234, 0.2);
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.search-result-category {
+    color: #a0a0a0;
+}
+
+.search-no-results {
+    padding: 1.5rem;
+    text-align: center;
+    color: #a0a0a0;
 }
 
 .hint {
@@ -376,9 +437,7 @@ header h1 {
         flex-direction: column;
     }
 
-    .add-stock-form select,
-    .add-stock-form input,
-    .add-stock-form button {
+    .search-container {
         width: 100%;
     }
 
@@ -386,5 +445,13 @@ header h1 {
         width: 50px;
         height: 50px;
         font-size: 1.5rem;
+    }
+
+    .search-results {
+        max-height: 300px;
+    }
+
+    .search-result-item {
+        padding: 0.8rem;
     }
 }
