@@ -44,11 +44,57 @@ export default async function handler(req, res) {
         const change = currentPrice - previousPrice;
         const changePercent = (change / previousPrice) * 100;
 
+        // --- Forward-looking data (analyst/consensus) ---
+        // NOTE: Some tickers/markets may not have analyst coverage on Yahoo.
+        let forward = { available: false };
+        try {
+            const qsUrl = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(yahooSymbol)}?modules=price,recommendationTrend,financialData,earningsTrend`;
+            const qsRes = await fetch(qsUrl);
+            const qsJson = await qsRes.json();
+            const r = qsJson?.quoteSummary?.result?.[0];
+
+            const rec = r?.recommendationTrend?.trend?.[0];
+            const fd = r?.financialData;
+            const et = r?.earningsTrend?.trend?.[0];
+            const price = r?.price;
+
+            const strongBuy = Number(rec?.strongBuy ?? 0);
+            const buy = Number(rec?.buy ?? 0);
+            const hold = Number(rec?.hold ?? 0);
+            const sell = Number(rec?.sell ?? 0);
+            const strongSell = Number(rec?.strongSell ?? 0);
+            const total = strongBuy + buy + hold + sell + strongSell;
+
+            const analystScore = total > 0
+                ? (strongBuy * 1.0 + buy * 0.75 + hold * 0.5 + sell * 0.25 + strongSell * 0.0) / total
+                : null;
+
+            const targetMean = fd?.targetMeanPrice?.raw ?? null;
+            const upsidePct = (targetMean && currentPrice)
+                ? ((targetMean - currentPrice) / currentPrice)
+                : null;
+
+            const earningsGrowth = et?.growth?.raw ?? null;
+
+            forward = {
+                available: analystScore !== null || targetMean !== null || earningsGrowth !== null,
+                analyst: total > 0 ? { strongBuy, buy, hold, sell, strongSell, total, score: analystScore } : null,
+                targetMeanPrice: targetMean,
+                upsidePct,
+                earningsGrowth,
+                currency: price?.currency ?? null,
+                asOf: Date.now()
+            };
+        } catch (e) {
+            forward = { available: false };
+        }
+
         return res.status(200).json({
             price: currentPrice,
             change,
             changePercent,
             historicalPrices: closes,
+            forward,
             timestamp: Date.now()
         });
 

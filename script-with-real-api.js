@@ -355,15 +355,40 @@ function calculateSignals(data) {
         sellScore += 25;
     }
 
-    // 이동평균 분석
-    const price = data.price;
-    const ma20 = data.indicators.ma20;
-    const ma50 = data.indicators.ma50;
+    // 전문가/시장전망(Forward-looking) 분석 (이동평균 점수는 제외)
+    const f = data.forward;
+    if (f && f.available) {
+        const aScore = f.analyst?.score;
+        if (typeof aScore === 'number') {
+            if (aScore >= 0.70) buyScore += 10;
+            else if (aScore >= 0.58) buyScore += 7;
+            else if (aScore >= 0.50) buyScore += 4;
+            else if (aScore <= 0.35) sellScore += 10;
+            else if (aScore <= 0.45) sellScore += 7;
+            else sellScore += 4;
+        }
 
-    if (price > ma20 && price > ma50) buyScore += 25;
-    else if (price > ma20) buyScore += 15;
-    else if (price < ma20 && price < ma50) sellScore += 25;
-    else if (price < ma20) sellScore += 15;
+        const up = f.upsidePct;
+        if (typeof up === 'number') {
+            if (up >= 0.20) buyScore += 10;
+            else if (up >= 0.10) buyScore += 7;
+            else if (up >= 0.03) buyScore += 4;
+            else if (up <= -0.10) sellScore += 10;
+            else if (up <= -0.03) sellScore += 7;
+            else if (up < 0) sellScore += 4;
+        }
+
+        const eg = f.earningsGrowth;
+        if (typeof eg === 'number') {
+            if (eg >= 0.15) buyScore += 5;
+            else if (eg >= 0.05) buyScore += 3;
+            else if (eg <= -0.10) sellScore += 5;
+            else if (eg <= -0.03) sellScore += 3;
+        }
+    } else {
+        buyScore += 12;
+        sellScore += 12;
+    }
 
     // 볼린저밴드 분석
     const bollinger = data.indicators.bollinger;
