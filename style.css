@@ -294,8 +294,9 @@ header h1 {
 
 /* 간단보기 모드 */
 body.compact .stocks-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
 }
 
 body.compact .stock-card {
@@ -306,6 +307,8 @@ body.compact .stock-card {
     align-items: center;
     gap: 0.5rem;
     flex-wrap: nowrap;
+    width: 100%;
+    justify-content: space-between;
 }
 
 body.compact .price-info,
@@ -350,14 +353,14 @@ body.compact .stock-info h3 {
 body.compact .stock-header {
     margin: 0;
     flex: 0 0 auto;
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
+    display: contents;
 }
 
 body.compact .stock-info {
     flex-direction: row;
     gap: 0;
+    order: 1;
+    flex: 0 0 auto;
 }
 
 body.compact .stock-info h3 {
@@ -376,6 +379,15 @@ body.compact .delete-btn {
     min-width: 28px;
     height: 28px;
     font-size: 0.9rem;
+    background: transparent;
+    border: none;
+    color: #888;
+    order: 999;
+    margin-left: auto;
+}
+
+body.compact .delete-btn:hover {
+    color: #ff6b6b;
 }
 
 body.compact .signals {
@@ -383,8 +395,9 @@ body.compact .signals {
     flex-direction: row;
     gap: 0.4rem;
     margin: 0;
-    flex: 1;
+    flex: 0 0 auto;
     justify-content: flex-start;
+    order: 2;
 }
 
 /* 매수(초록) 티커 */
@@ -620,10 +633,6 @@ body.compact .signals {
 
     .stocks-grid {
         grid-template-columns: 1fr;
-    }
-
-    body.compact .stocks-grid {
-        grid-template-columns: repeat(2, 1fr);
     }
 
     .add-stock-form {
