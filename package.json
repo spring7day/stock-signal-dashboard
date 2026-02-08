@@ -1,0 +1,8 @@
+{
+  "name": "stock-signal-dashboard",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "iconv-lite": "^0.6.3"
+  }
+}

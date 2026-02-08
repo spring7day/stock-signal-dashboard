@@ -1,6 +1,49 @@
 // Vercel Serverless Function - 종목 검색
-// NOTE: 일부 국내 사이트(네이버 등)는 서버리스 환경에서 차단/HTML 응답이 나올 수 있어
-// 안정성을 위해 Yahoo Finance 검색을 기본으로 사용합니다.
+// - 한글 검색: KRX KIND 기업목록(다운로드 HTML, EUC-KR)을 파싱해서 종목명→코드 검색
+// - 영문/티커 검색: Yahoo Finance 검색
+import iconv from 'iconv-lite';
+
+let krxCache = null;
+let krxCacheLoadedAt = 0;
+
+async function loadKrxList() {
+  const ONE_DAY = 24 * 60 * 60 * 1000;
+  if (krxCache && Date.now() - krxCacheLoadedAt < ONE_DAY) return krxCache;
+
+  const url = 'https://kind.krx.co.kr/corpgeneral/corpList.do?method=download&searchType=13';
+  const r = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (compatible; StockSignalDashboard/1.0)',
+      'Accept': '*/*'
+    }
+  });
+  const ab = await r.arrayBuffer();
+  const decoded = iconv.decode(Buffer.from(ab), 'euc-kr');
+
+  // 매우 단순한 HTML table 파싱 (첫 td=회사명, 세번째 td=종목코드)
+  const rows = decoded.split(/<tr>/i).slice(1);
+  const list = [];
+  for (const row of rows) {
+    const tds = row.split(/<td[^>]*>/i).slice(1).map(x => x.split(/<\/td>/i)[0]);
+    if (tds.length < 3) continue;
+    const name = tds[0].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
+    const code = tds[2].replace(/<[^>]+>/g, '').trim();
+    if (!name || !code) continue;
+    // 6자리 코드만
+    const symbol = code.replace(/[^0-9]/g, '');
+    if (symbol.length !== 6) continue;
+    list.push({ market: 'KR', symbol, name, category: 'KRX' });
+  }
+
+  krxCache = list;
+  krxCacheLoadedAt = Date.now();
+  return krxCache;
+}
+
+function isKorean(text) {
+  return /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(text);
+}
+
 export default async function handler(req, res) {
   // CORS 헤더
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -15,31 +58,13 @@ export default async function handler(req, res) {
   try {
     let results = [];
 
-    // 1) 한국(한글 검색) - 네이버 검색 시도 (차단 시 자동 무시)
-    // m.stock.naver.com 은 환경에 따라 403/HTML 응답이 나올 수 있음
-    try {
-      const naverUrl = `https://m.stock.naver.com/api/search/searchListJson?keyword=${encodeURIComponent(query)}`;
-      const naverRes = await fetch(naverUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; StockSignalDashboard/1.0)',
-          'Accept': 'application/json,text/plain,*/*'
-        }
-      });
-      const nText = await naverRes.text();
-      const nJson = JSON.parse(nText);
-
-      if (Array.isArray(nJson?.result)) {
-        results = results.concat(
-          nJson.result.slice(0, 10).map(item => ({
-            market: 'KR',
-            symbol: item.cd,
-            name: item.nm,
-            category: item.tp || 'KR'
-          }))
-        );
-      }
-    } catch (e) {
-      // ignore
+    // 1) 한글 검색이면 KRX 목록에서 검색
+    if (isKorean(query)) {
+      const krx = await loadKrxList();
+      const q = query.trim();
+      results = results.concat(
+        krx.filter(s => s.name.includes(q) || s.symbol.includes(q)).slice(0, 10)
+      );
     }
 
     // 2) Yahoo Finance (영문/티커 검색 강점)
