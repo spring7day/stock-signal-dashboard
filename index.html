@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Signal Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 로그인 화면 -->
+    <div id="login-screen" class="login-container">
+        <div class="login-box">
+            <h1>📊 Stock Signal Dashboard</h1>
+            <input type="password" id="password-input" placeholder="비밀번호 입력" autocomplete="off">
+            <button onclick="checkPassword()">로그인</button>
+            <p class="error-msg" id="error-msg"></p>
+        </div>
+    </div>
+
+    <!-- 메인 대시보드 -->
+    <div id="main-dashboard" class="hidden">
+        <header>
+            <h1>📊 Stock Signal Dashboard</h1>
+            <div class="header-info">
+                <span id="last-update">마지막 업데이트: -</span>
+                <button onclick="logout()" class="logout-btn">로그아웃</button>
+            </div>
+        </header>
+
+        <div class="container">
+            <!-- 종목 추가 섹션 -->
+            <div class="add-stock-section">
+                <h2>종목 추가</h2>
+                <div class="add-stock-form">
+                    <select id="market-select">
+                        <option value="KR">🇰🇷 한국</option>
+                        <option value="US">🇺🇸 미국</option>
+                    </select>
+                    <input type="text" id="symbol-input" placeholder="종목코드 (예: 005930, AAPL)">
+                    <input type="text" id="name-input" placeholder="종목명 (예: 삼성전자, Apple)">
+                    <button onclick="addStock()">추가</button>
+                </div>
+                <p class="hint">💡 한국: 005930(삼성전자), 035720(카카오) / 미국: AAPL, TSLA, SPY(ETF)</p>
+            </div>
+
+            <!-- 신호등 대시보드 -->
+            <div id="stocks-container" class="stocks-grid">
+                <!-- 동적으로 생성됩니다 -->
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
