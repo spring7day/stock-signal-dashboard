@@ -296,14 +296,14 @@ async function createStockCard(stock) {
 
                 <div class="signals">
                     <div class="signal">
-                        <div class="signal-label">매수 신호</div>
+                        <div class="signal-label">매수</div>
                         <div class="signal-light ${signals.buy.color}">
                             ${signals.buy.emoji}
                         </div>
                         <div class="signal-score">${signals.buy.score}/100</div>
                     </div>
                     <div class="signal">
-                        <div class="signal-label">매도 신호</div>
+                        <div class="signal-label">매도</div>
                         <div class="signal-light ${signals.sell.color}">
                             ${signals.sell.emoji}
                         </div>
