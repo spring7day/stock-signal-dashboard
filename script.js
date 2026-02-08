@@ -247,6 +247,10 @@ function setupCardInteractions() {
         if (!card) return;
         if (e.target.closest('.delete-btn')) return;
 
+        // 텍스트 선택 방지 + 드래그는 핸들에서만 시작
+        const handle = e.target.closest('.drag-handle');
+        if (!handle) return;
+
         clearPress();
         pressTimer = setTimeout(() => {
             // reorder start
@@ -466,6 +470,7 @@ async function createStockCard(stock) {
         return `
             <div class="stock-card" data-market="${stock.market}" data-symbol="${stock.symbol}" data-name="${stock.name.replace(/\"/g, '&quot;')}" data-buy-color="${signals.buy.color}">
                 <div class="stock-header">
+                    <span class="drag-handle" title="길게 눌러 정렬" aria-label="정렬">≡</span>
                     <div class="stock-info">
                         <h3>${stock.name} <span style="font-size:0.7rem;color:#51cf66;">✓실제</span></h3>
                         <div class="symbol">${stock.market === 'KR' ? '🇰🇷' : '🇺🇸'} ${stock.symbol}</div>
@@ -522,6 +527,7 @@ async function createStockCard(stock) {
         return `
             <div class="stock-card">
                 <div class="stock-header">
+                    <span class="drag-handle" title="길게 눌러 정렬" aria-label="정렬">≡</span>
                     <div class="stock-info">
                         <h3>${stock.name}</h3>
                         <div class="symbol">${stock.market === 'KR' ? '🇰🇷' : '🇺🇸'} ${stock.symbol}</div>
