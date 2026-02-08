@@ -744,7 +744,7 @@ function updateBuyTicker() {
         return;
     }
 
-    // 2번 반복해서 자연스럽게 무한 스크롤처럼 보이게
+    // 티커 HTML 생성
     const htmlOnce = filteredStocks.map(it => {
         const safeName = (it.name || '').replace(/"/g, '&quot;');
         return `
@@ -756,7 +756,8 @@ function updateBuyTicker() {
         `;
     }).join('');
 
-    track.innerHTML = htmlOnce + htmlOnce;
+    // 종목이 5개 이상이면 무한 스크롤 효과를 위해 2번 반복, 그 외엔 1번만
+    track.innerHTML = filteredStocks.length >= 5 ? (htmlOnce + htmlOnce) : htmlOnce;
     ticker.classList.remove('hidden');
 }
 
