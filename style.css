@@ -299,7 +299,13 @@ body.compact .stocks-grid {
 }
 
 body.compact .stock-card {
-    padding: 0.75rem;
+    padding: 0.6rem 0.8rem;
+    border: none;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
 }
 
 body.compact .price-info,
@@ -312,13 +318,25 @@ body.compact .signals {
 }
 
 body.compact .signal {
-    padding: 0.7rem;
+    padding: 0;
+    background: transparent;
+    border: none;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+body.compact .signal-label {
+    font-size: 0.75rem;
+    margin: 0;
 }
 
 body.compact .signal-light {
-    width: 40px;
-    height: 40px;
-    font-size: 1.25rem;
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+    margin: 0;
 }
 
 body.compact .signal-score {
@@ -330,7 +348,43 @@ body.compact .stock-info h3 {
 }
 
 body.compact .stock-header {
-    margin-bottom: 0.15rem;
+    margin: 0;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+body.compact .stock-info {
+    flex-direction: row;
+    gap: 0;
+}
+
+body.compact .stock-info h3 {
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+body.compact .stock-info h3 span,
+body.compact .symbol {
+    display: none !important;
+}
+
+body.compact .delete-btn {
+    position: static;
+    padding: 0.3rem;
+    min-width: 28px;
+    height: 28px;
+    font-size: 0.9rem;
+}
+
+body.compact .signals {
+    display: flex;
+    flex-direction: row;
+    gap: 0.4rem;
+    margin: 0;
+    flex: 1;
+    justify-content: flex-start;
 }
 
 /* 매수(초록) 티커 */
