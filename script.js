@@ -792,13 +792,13 @@ function calculateSignals(data) {
     return {
         buy: {
             score: buyScore,
-            color: buyScore >= 60 ? 'green' : buyScore >= 35 ? 'yellow' : 'red',
-            emoji: buyScore >= 60 ? '🟢' : buyScore >= 35 ? '🟡' : '🔴'
+            color: buyScore >= 70 ? 'green' : buyScore >= 40 ? 'yellow' : 'red',
+            emoji: buyScore >= 70 ? '🟢' : buyScore >= 40 ? '🟡' : '🔴'
         },
         sell: {
             score: sellScore,
-            color: sellScore >= 60 ? 'green' : sellScore >= 35 ? 'yellow' : 'red',
-            emoji: sellScore >= 60 ? '🟢' : sellScore >= 35 ? '🟡' : '🔴'
+            color: sellScore >= 70 ? 'green' : sellScore >= 40 ? 'yellow' : 'red',
+            emoji: sellScore >= 70 ? '🟢' : sellScore >= 40 ? '🟡' : '🔴'
         }
     };
 }
