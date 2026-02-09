@@ -329,15 +329,11 @@ body.compact .stock-card:last-child {
     margin-bottom: 0;
 }
 
-/* gap 지원 브라우저에서는 gap을 사용하고 margin은 제거 (이중 간격/불일치 방지) */
-@supports (gap: 1rem) {
-    body.compact .stocks-grid {
-        gap: 0.4rem;
-    }
-    body.compact .stock-card {
-        margin-bottom: 0;
-    }
-}
+/* NOTE:
+   iOS/Safari 계열에서 flex-gap이 "지원"으로 판정되더라도,
+   펼침/접힘 등 레이아웃 변화 후 간헐적으로 gap 적용이 흔들리는 사례가 있어
+   간단보기에서는 gap을 사용하지 않고 margin 기반 간격으로 고정합니다.
+*/
 
 body.compact .stock-card:hover {
     background: rgba(30, 30, 45, 0.68);
