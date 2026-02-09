@@ -296,8 +296,9 @@ header h1 {
 body.compact .stocks-grid {
     display: flex;
     flex-direction: column;
-    /* iOS 구버전 등 flex-gap 미지원 환경을 대비해 gap + margin 병행 */
-    gap: 0.4rem;
+    /* gap 지원이 애매한 모바일 환경에서 간격이 깨지는 케이스가 있어,
+       기본은 margin 기반으로 고정하고, gap 지원 브라우저에서만 gap을 켭니다. */
+    gap: 0;
 }
 
 body.compact .stock-card {
@@ -308,7 +309,7 @@ body.compact .stock-card {
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
     border-radius: 12px;
 
-    /* flex-gap 미지원 대비: 카드 간 간격을 margin으로도 보장 */
+    /* 기본 간격은 margin으로 보장 (모바일/사파리에서 안정적) */
     margin: 0 0 0.4rem;
 
     display: grid;
@@ -326,6 +327,16 @@ body.compact .stock-card {
 
 body.compact .stock-card:last-child {
     margin-bottom: 0;
+}
+
+/* gap 지원 브라우저에서는 gap을 사용하고 margin은 제거 (이중 간격/불일치 방지) */
+@supports (gap: 1rem) {
+    body.compact .stocks-grid {
+        gap: 0.4rem;
+    }
+    body.compact .stock-card {
+        margin-bottom: 0;
+    }
 }
 
 body.compact .stock-card:hover {
